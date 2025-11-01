@@ -1,0 +1,16 @@
+[package]
+name = "papex_papertoken"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+soroban-sdk = "21"
+
+[dev-dependencies]
+soroban-sdk = { version = "21", features = ["testutils"] }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+opt-level = "z"

@@ -1,0 +1,73 @@
+import React from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from '../lib/router';
+import { Button } from './ui/button.tsx';
+import { Wallet, FileText, Layers, ShoppingBag } from 'lucide-react';
+import { useArtica } from '../context/ArticaContext';
+
+const navItems = [
+  { to: '/papers', label: 'Papers', icon: <FileText className="h-4 w-4" /> },
+  { to: '/upload', label: 'Register', icon: <Layers className="h-4 w-4" /> },
+  { to: '/nft-marketplace', label: 'Marketplace', icon: <ShoppingBag className="h-4 w-4" /> },
+];
+
+const MainLayout: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { walletAddress, connectWallet } = useArtica();
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <header className="bg-white border-b">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 text-lg font-semibold"
+          >
+            <span className="rounded bg-slate-900 px-2 py-1 text-white">Papex</span>
+            <span className="hidden sm:inline text-slate-600">Soroban</span>
+          </button>
+
+          <nav className="flex items-center gap-2">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive || location.pathname.startsWith(item.to)
+                      ? 'bg-slate-900 text-white'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`
+                }
+              >
+                {item.icon}
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+
+          <div>
+            {walletAddress ? (
+              <Button variant="outline" size="sm" className="font-mono text-xs">
+                <Wallet className="mr-2 h-4 w-4" />
+                {walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}
+              </Button>
+            ) : (
+              <Button size="sm" onClick={() => connectWallet()}>
+                <Wallet className="mr-2 h-4 w-4" />
+                Connect Freighter
+              </Button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-6xl px-4 py-8">
+        <Outlet />
+      </main>
+    </div>
+  );
+};
+
+export default MainLayout;

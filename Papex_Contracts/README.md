@@ -1,21 +1,33 @@
-# Soroban Project
+# Papex Soroban Contracts
 
-## Project Structure
+This workspace contains the Soroban smart contracts that power the Papex research marketplace. All contracts are Rust crates packaged in a single Cargo workspace.
 
-This repository uses the recommended structure for a Soroban project:
-```text
-.
-├── contracts
-│   └── hello_world
-│       ├── src
-│       │   ├── lib.rs
-│       │   └── test.rs
-│       └── Cargo.toml
-├── Cargo.toml
-└── README.md
+## Contracts
+
+| Contract | Path | Purpose |
+|----------|------|---------|
+| `papex_registry` | `contracts/papex-contract/papex_registry` | Stores papers, metadata, token assignments, and status transitions. |
+| `papex_marketplace` | `contracts/papex-contract/papex_marketplace` | Maintains marketplace listings and lightweight trade history per paper. |
+| `papex_papertoken` | `contracts/papex-contract/papex_papertoken` | Bonding-curve token contract for an individual paper (buy/sell, liquidity tracking). |
+
+Each crate exposes `init` plus a set of admin/user methods documented in the source files. Unit tests (`src/test.rs`) cover the main flows; run them with Cargo.
+
+## Build & test
+
+```bash
+cd Papex_Contracts/contracts/papex-contract
+cargo build --target wasm32-unknown-unknown --release
+cargo test
 ```
 
-- New Soroban contracts can be put in `contracts`, each in their own directory. There is already a `hello_world` contract in there to get you started.
-- If you initialized this project with any other example contracts via `--with-example`, those contracts will be in the `contracts` directory as well.
-- Contracts should have their own `Cargo.toml` files that rely on the top-level `Cargo.toml` workspace for their dependencies.
-- Frontend libraries can be added to the top-level directory as well. If you initialized this project with a frontend template via `--frontend-template` you will have those files already included.
+> ⚠️ Building/tests may download new crates. If your environment lacks network access, mirror the crates ahead of time or run the commands on a networked machine.
+
+The resulting WASM files are under `target/wasm32-unknown-unknown/release/`. Upload them with `soroban contract deploy` and note the contract IDs for the frontend configuration (`src/config/stellar.ts`).
+
+## Deployment tips
+
+1. **Upload WASM**: `soroban contract deploy --wasm target/.../papex_papertoken.wasm --source <key> --network futurenet`
+2. **Initialize** each contract with the desired parameters (owner address, pricing curve, etc.).
+3. **Link tokens** via `papex_registry.set_token` and register the listing through `papex_marketplace.register_listing`.
+
+The frontend (`Papex_Frontend`) uses Soroban RPC calls (`@stellar/stellar-sdk`) to interact with these contracts. Update the config file with the deployed contract IDs to complete the integration.

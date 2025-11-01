@@ -1,16 +1,68 @@
-# React + Vite
+# Papex Frontend · Soroban Edition
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Papex is a research paper marketplace that now targets the **Stellar Soroban** smart-contract stack.  
+This frontend integrates with the Soroban contracts contained in `Papex_Contracts` and assumes Freighter as the end-user wallet.
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Node.js 18+ / npm 9+
+- [Freighter](https://www.freighter.app/) browser wallet (Futurenet enabled)
+- Soroban CLI (`cargo install --locked soroban-cli`)
+- Deployed Soroban contracts:
+  - `papex_registry`
+  - `papex_marketplace`
+  - At least one `papex_papertoken` instance per paper
 
-## React Compiler
+> 💡 The contract WASM files are produced from the `Papex_Contracts` workspace.  
+> Deploy them to Futurenet (or your chosen network) and note the resulting contract IDs.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Install dependencies
 
-## Expanding the ESLint configuration
+```bash
+cd Papex_Frontend
+npm install
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+If npm cannot reach the registry from your environment, mirror the dependencies manually and re-run `npm install`.
+
+## Configure Stellar endpoints
+
+Edit `src/config/stellar.ts` and set:
+
+- `registryContractId`
+- `marketplaceContractId`
+- Optionally replace `readOnlyAccount`, `rpcUrl`, and `networkPassphrase` if you target a network other than Futurenet.
+
+## Run the development server
+
+```bash
+npm run dev
+```
+
+Visit the printed URL (default `http://localhost:5173`). Freighter will prompt for permissions when blockchain actions are performed.
+
+## On-chain workflow
+
+1. **Upload/prepare a paper** using your existing backend (the context stub throws by default—replace it with your API client).
+2. **Deploy** a `papex_papertoken` contract for the paper (supply name, symbol, pricing parameters during `init`).
+3. **Link** the token to the registry via the *Token Creation* UI (calls `registry.set_token`).
+4. **Create a marketplace listing** (calls `marketplace.register_listing` with your metadata URI).
+5. Trade tokens through the *Token Trading* screen (quotes + buy/sell use Soroban RPC).
+
+## Soroban utilities
+
+Helper functions live in `src/lib/soroban.ts` and wrap:
+
+- `invokeView` – simulation calls.
+- `invokeTransaction` – signed transactions via Freighter.
+
+Numbers are scaled to 7 decimals (Soroban default) using helpers in `src/utils/stellarNumber.ts`.
+
+## Testing & linting
+
+```bash
+npm run lint    # ESLint (React 19 configuration)
+```
+
+End-to-end and contract integration tests are not yet wired in this repo.  
+When the network is available, add custom checks or hook into the Soroban CLI workflows.
