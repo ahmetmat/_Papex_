@@ -1,6 +1,23 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Theme Colors - Custom CSS Variables for Tailwind CSS 4 */
+@theme {
+  --color-primary: #083466;
+  --color-primary-foreground: #ffffff;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --color-input: #e2e8f0;
+  --color-ring: #083466;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
 
 /* Opsiyonel: temel yükseklik */
-html, body, #root { height: 100%; }
+html, body, #root { 
+  height: 100%; 
+}

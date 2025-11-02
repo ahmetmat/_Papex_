@@ -14,15 +14,35 @@ Each crate exposes `init` plus a set of admin/user methods documented in the sou
 
 ## Build & test
 
+⚠️ **IMPORTANT**: Contracts must be built using `soroban contract build` to ensure compatibility with Soroban. Using `cargo build --target wasm32-unknown-unknown` will produce WASM files with reference types enabled, which Soroban does not support.
+
+### Build all contracts:
 ```bash
 cd Papex_Contracts/contracts/papex-contract
-cargo build --target wasm32-unknown-unknown --release
+soroban contract build
+```
+
+### Build a specific contract:
+```bash
+cd Papex_Contracts/contracts/papex-contract/papex_papertoken
+soroban contract build
+```
+
+### Run tests:
+```bash
+cd Papex_Contracts/contracts/papex-contract
 cargo test
 ```
 
 > ⚠️ Building/tests may download new crates. If your environment lacks network access, mirror the crates ahead of time or run the commands on a networked machine.
 
-The resulting WASM files are under `target/wasm32-unknown-unknown/release/`. Upload them with `soroban contract deploy` and note the contract IDs for the frontend configuration (`src/config/stellar.ts`).
+The resulting WASM files are under `target/wasm32v1-none/release/`. These are Soroban-compatible WASM files that can be deployed.
+
+### Copy WASM to frontend:
+After building, copy the WASM files to the frontend's public folder:
+```bash
+cp target/wasm32v1-none/release/papex_papertoken.wasm /path/to/Papex_Frontend/public/contracts/
+```
 
 ## Deployment tips
 

@@ -10,6 +10,9 @@ import TokenTrading from './components/trading/TokenTrading';
 import NFTMarketplaceTrading from './NFTMarketplaceTrading';
 import NftCreation from './NftCreation';
 
+
+
+
 const TokenCreationWrapper: React.FC = () => {
   const { paperId } = useParams<{ paperId: string }>();
   if (!paperId) return null;

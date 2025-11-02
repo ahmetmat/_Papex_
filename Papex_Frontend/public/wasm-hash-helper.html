@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Papex - WASM Hash Cache Helper</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        label {
+            display: block;
+            margin-top: 20px;
+            font-weight: 600;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-top: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            box-sizing: border-box;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            margin-top: 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #bee5eb;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 WASM Hash Cache Helper</h1>
+        <p class="subtitle">Bu aracı ilk WASM upload'ı timeout olduysa hash'i manuel olarak cache'lemek için kullanın.</p>
+        
+        <label for="txHash">Transaction Hash:</label>
+        <input type="text" id="txHash" placeholder="68518756e141d35cf02f584802ab979f750d23dd12cc186e97c3dfb9918ae638">
+        
+        <button onclick="fetchAndCacheHash()">Fetch & Cache WASM Hash</button>
+        
+        <div id="result"></div>
+        
+        <div class="info">
+            <strong>📝 Nasıl Kullanılır:</strong>
+            <ol>
+                <li>Deployment sırasında aldığınız transaction hash'ini yukarıya yapıştırın</li>
+                <li>"Fetch & Cache WASM Hash" butonuna tıklayın</li>
+                <li>Hash otomatik olarak cache'lenecek</li>
+                <li>Deployment'ı tekrar deneyin - bu sefer hızlı olacak!</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        async function fetchAndCacheHash() {
+            const txHash = document.getElementById('txHash').value.trim();
+            const resultDiv = document.getElementById('result');
+            
+            if (!txHash) {
+                resultDiv.innerHTML = '<div class="result error">Lütfen transaction hash girin!</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="result">Fetching transaction...<span class="loading"></span></div>';
+            
+            try {
+                // Try Soroban RPC first
+                const rpcUrl = 'https://soroban-testnet.stellar.org';
+                const rpcResponse = await fetch(rpcUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        jsonrpc: '2.0',
+                        id: 1,
+                        method: 'getTransaction',
+                        params: [txHash]
+                    })
+                });
+                
+                const rpcData = await rpcResponse.json();
+                
+                if (rpcData.result && rpcData.result.status === 'SUCCESS') {
+                    const returnValue = rpcData.result.returnValue;
+                    
+                    if (returnValue && returnValue._value) {
+                        // Extract hash bytes from XDR
+                        const hashBytes = returnValue._value;
+                        let hashHex;
+                        
+                        if (hashBytes instanceof Uint8Array) {
+                            hashHex = Array.from(hashBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+                        } else if (Array.isArray(hashBytes)) {
+                            hashHex = hashBytes.map(b => b.toString(16).padStart(2, '0')).join('');
+                        } else {
+                            throw new Error('Unexpected hash format');
+                        }
+                        
+                        // Cache the hash
+                        localStorage.setItem('papex_token_wasm_hash', hashHex);
+                        
+                        resultDiv.innerHTML = `
+                            <div class="result success">
+                                ✅ Başarılı! WASM hash cache'lendi:<br>
+                                <code style="word-break: break-all;">${hashHex.substring(0, 32)}...</code><br><br>
+                                Artık deployment'ı tekrar deneyebilirsiniz. Bu sefer çok daha hızlı olacak!
+                            </div>
+                        `;
+                        return;
+                    }
+                }
+                
+                // If RPC didn't work, check Horizon
+                resultDiv.innerHTML = '<div class="result">RPC response incomplete, checking Horizon...<span class="loading"></span></div>';
+                
+                const horizonUrl = `https://horizon-testnet.stellar.org/transactions/${txHash}`;
+                const horizonResponse = await fetch(horizonUrl);
+                
+                if (horizonResponse.ok) {
+                    const horizonData = await horizonResponse.json();
+                    if (horizonData.successful) {
+                        resultDiv.innerHTML = `
+                            <div class="result error">
+                                ⚠️ Transaction başarılı ama hash otomatik olarak alınamadı.<br><br>
+                                Lütfen <a href="https://stellar.expert/explorer/testnet/tx/${txHash}" target="_blank">Stellar Expert</a>'ten 
+                                contract ID'yi manuel olarak alın ve şu komutu browser console'da çalıştırın:<br><br>
+                                <code>localStorage.setItem('papex_token_wasm_hash', 'YOUR_HASH_HERE');</code>
+                            </div>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = '<div class="result error">❌ Transaction başarısız olmuş.</div>';
+                    }
+                } else {
+                    throw new Error('Transaction bulunamadı');
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">❌ Hata: ${error.message}</div>`;
+            }
+        }
+        
+        // Auto-fill from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const txHash = urlParams.get('tx');
+        if (txHash) {
+            document.getElementById('txHash').value = txHash;
+        }
+    </script>
+</body>
+</html>
+

@@ -1,4 +1,10 @@
 import { useState, useEffect } from 'react';
+import * as pdfjs from 'pdfjs-dist';
+import { FileText } from 'lucide-react';
+
+// Configure PDF.js worker - use worker from public folder to avoid CSP issues
+// The worker file is copied to public/pdf.worker.min.mjs during build
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 const PDFPreview = ({ url }: { url: string }) => {
   const [preview, setPreview] = useState<string | null>(null);
@@ -6,14 +12,12 @@ const PDFPreview = ({ url }: { url: string }) => {
   useEffect(() => {
     const loadPDFPreview = async () => {
       try {
-        const pdfjsLib = window.pdfjsLib;
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
         
         const response = await fetch(url);
         const arrayBuffer = await response.arrayBuffer();
         const typedarray = new Uint8Array(arrayBuffer);
         
-        const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
+        const pdf = await pdfjs.getDocument({ data: typedarray }).promise;
         const page = await pdf.getPage(1);
         
         const viewport = page.getViewport({ scale: 1.5 });

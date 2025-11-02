@@ -1,18 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card.tsx';
 import { Button } from '../ui/button.tsx';
 import { Input } from '../ui/input.tsx';
 import { Textarea } from '../ui/textarea.tsx';
 import { Alert, AlertDescription } from '../ui/alert.tsx';
 import { useArtica } from '../../context/ArticaContext';
-import { Loader2, Link as LinkIcon, FileText, Hash, CheckCircle } from 'lucide-react';
+import { useNavigate } from '../../lib/router';
+import { 
+  Loader2, 
+  Link as LinkIcon, 
+  FileText, 
+  Hash, 
+  CheckCircle, 
+  Upload,
+  X,
+  ArrowRight
+} from 'lucide-react';
+import {
+  extractPDFMetadata,
+  uploadToIPFS,
+  createMetadataJSON,
+  validatePDFFile,
+  type PaperMetadata,
+} from '../../pdfService';
 
 const PaperUpload: React.FC = () => {
   const { walletAddress, connectWallet, registerPaper } = useArtica();
+  const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [metadataUri, setMetadataUri] = useState('');
   const [doi, setDoi] = useState('');
   const [notes, setNotes] = useState('');
+  const [extractedMetadata, setExtractedMetadata] = useState<PaperMetadata | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [registeredId, setRegisteredId] = useState<number | null>(null);
@@ -22,6 +45,75 @@ const PaperUpload: React.FC = () => {
       await connectWallet();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to connect wallet');
+    }
+  };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate PDF
+    const validation = validatePDFFile(file);
+    if (!validation.valid) {
+      setError(validation.error || 'Invalid PDF file');
+      return;
+    }
+
+    setPdfFile(file);
+    setError(null);
+    setExtractedMetadata(null);
+
+    try {
+      // Extract metadata from PDF
+      const result = await extractPDFMetadata(file);
+      if (result.success && result.metadata) {
+        setExtractedMetadata(result.metadata);
+        if (result.metadata.doi) {
+          setDoi(result.metadata.doi);
+        }
+      } else {
+        setError(result.error || 'Failed to extract PDF metadata');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to process PDF');
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setPdfFile(null);
+    setExtractedMetadata(null);
+    setMetadataUri('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleUploadPDF = async () => {
+    if (!pdfFile) return;
+
+    setUploading(true);
+    setError(null);
+
+    try {
+      // Upload PDF to IPFS
+      const pdfHash = await uploadToIPFS(pdfFile);
+      
+      // Create and upload metadata JSON
+      if (extractedMetadata) {
+        const metadataHash = await createMetadataJSON(extractedMetadata, pdfHash, {
+          notes: notes.trim() || undefined,
+        });
+        setMetadataUri(metadataHash);
+      } else {
+        // If no metadata extracted, use PDF hash directly
+        setMetadataUri(pdfHash);
+      }
+
+      setSuccess('PDF and metadata uploaded to IPFS successfully!');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload to IPFS');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -39,7 +131,15 @@ const PaperUpload: React.FC = () => {
       setSubmitting(true);
       const paperId = await registerPaper(metadataUri.trim(), doi.trim() || null);
       setRegisteredId(paperId);
-      setSuccess(paperId !== null ? `Paper registered on-chain with ID #${paperId}` : 'Paper registration transaction submitted');
+      if (paperId !== null) {
+        setSuccess(`Paper registered on-chain with ID #${paperId}. Redirecting to token creation...`);
+        // Navigate to token creation page after a short delay
+        setTimeout(() => {
+          navigate(`/token-creation/${paperId}`);
+        }, 2000);
+      } else {
+        setSuccess('Paper registration transaction submitted');
+      }
       setNotes('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to register paper');
@@ -82,6 +182,85 @@ const PaperUpload: React.FC = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* PDF Upload Section */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-2">
+                <Upload className="h-4 w-4" />
+                PDF File
+              </label>
+              {!pdfFile ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    id="pdf-upload"
+                  />
+                  <label
+                    htmlFor="pdf-upload"
+                    className="cursor-pointer flex flex-col items-center gap-2"
+                  >
+                    <Upload className="h-8 w-8 text-gray-400" />
+                    <span className="text-sm text-gray-600">
+                      Click to upload PDF or drag and drop
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      PDF files only, max 50MB
+                    </span>
+                  </label>
+                </div>
+              ) : (
+                <div className="border rounded-lg p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                    <div>
+                      <p className="text-sm font-medium">{pdfFile.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleUploadPDF}
+                      disabled={uploading}
+                    >
+                      {uploading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        'Upload to IPFS'
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveFile}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {extractedMetadata && (
+                <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-xs font-medium text-blue-900 mb-1">Extracted Metadata:</p>
+                  <p className="text-xs text-blue-800">{extractedMetadata.title}</p>
+                  {extractedMetadata.authors.length > 0 && (
+                    <p className="text-xs text-blue-700 mt-1">
+                      Authors: {extractedMetadata.authors.join(', ')}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
                 <LinkIcon className="h-4 w-4" />
@@ -91,9 +270,13 @@ const PaperUpload: React.FC = () => {
                 value={metadataUri}
                 onChange={(event) => setMetadataUri(event.target.value)}
                 placeholder="ipfs://..."
+                readOnly={!!pdfFile}
               />
               <p className="text-xs text-muted-foreground">
-                Provide the URI that hosts the paper metadata (IPFS, HTTPS, etc.).
+                {pdfFile 
+                  ? 'Will be automatically generated after uploading PDF to IPFS.'
+                  : 'Provide the URI that hosts the paper metadata (IPFS, HTTPS, etc.) or upload a PDF above.'
+                }
               </p>
             </div>
 
@@ -132,7 +315,10 @@ const PaperUpload: React.FC = () => {
                     Connect Freighter
                   </Button>
                 )}
-                <Button type="submit" disabled={submitting || !walletAddress}>
+                <Button 
+                  type="submit" 
+                  disabled={submitting || !walletAddress || !metadataUri.trim()}
+                >
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Register Paper'}
                 </Button>
               </div>

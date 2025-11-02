@@ -12,8 +12,12 @@
   "dependencies": {
     "@stellar/freighter-api": "^5.0.0",
     "@stellar/stellar-sdk": "^12.1.0",
+    "@tailwindcss/cli": "^4.1.16",
     "framer-motion": "^12.23.24",
+    "lightweight-charts": "^5.0.9",
     "lucide-react": "^0.552.0",
+    "pdfjs-dist": "^5.4.296",
+    "pinata-web3": "^0.5.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
