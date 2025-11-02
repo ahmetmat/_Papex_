@@ -55,6 +55,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useArtica, ChainPaper } from '../../context/ArticaContext';
 import { getPinataGatewayUrl, listPinnedFiles, formatIPFSUri } from '../../config/pinata';
+import PDFPreview from '../PDFPreview';
 
 const CATEGORIES = {
   ALL: 'All',
@@ -364,6 +365,11 @@ const PaperCard = ({
   const pdfUrl =
     metadata?.properties?.pdfUrl ||
     (paper.metadataUri ? getPinataGatewayUrl(paper.metadataUri) : '');
+  
+  // Generate a unique seed for placeholder image based on paper ID
+  const imageSeed = typeof paper.id === 'number' ? paper.id : paper.id.toString().charCodeAt(0);
+  // Use Unsplash Source for research/science themed images
+  const placeholderImageUrl = `https://source.unsplash.com/400x200/?research,science,academic,paper,study,lab&sig=${imageSeed}`;
 
   return (
     <motion.div
@@ -373,20 +379,21 @@ const PaperCard = ({
       className="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100"
     >
       {/* Header Image */}
-      <div className="relative h-40 bg-gradient-to-br from-gray-100 to-gray-50">
-        {paper.metadataUri && paper.metadataUri.startsWith('ipfs://') ? (
-          <img
-            src={pdfUrl || '/api/placeholder/400/200'}
-            alt={title}
-            className="w-full h-full object-cover opacity-50"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = '/api/placeholder/400/200';
-            }}
-          />
+      <div className="relative h-40 bg-gray-100 overflow-hidden">
+        {paper.metadataUri && paper.metadataUri.startsWith('ipfs://') && pdfUrl ? (
+          <PDFPreview url={pdfUrl} />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <FileText className="w-12 h-12 text-gray-300" />
-          </div>
+          <img
+            src={placeholderImageUrl}
+            alt={title}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              // Fallback to another placeholder service if Unsplash fails
+              const target = e.target as HTMLImageElement;
+              target.src = `https://picsum.photos/seed/${imageSeed}/400/200`;
+            }}
+            loading="lazy"
+          />
         )}
 
         {/* Category badge and like button */}

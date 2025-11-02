@@ -40,6 +40,15 @@ import MarketStats from './MarketStats.tsx';
 import LiquidityPool from './LiquidityPool.tsx';
 import SocialFeed from './SocialFeed.tsx';
 import TradePositions from './TradePositions.tsx';
+import Analytics from './Analytics.tsx';
+import { useTokenAnalytics } from '../../hooks/useTokenAnalytics';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog.tsx';
+import { Sparkles } from 'lucide-react';
+import CitationNetwork from '../analytics/CitationNetwork.tsx';
+import ImpactTimeSeries from '../analytics/ImpactTimeSeries.tsx';
+import GeographicDistribution from '../analytics/GeographicDistribution.tsx';
+import AcademicMetricsPanel from '../analytics/AcademicMetricsPanel.tsx';
+import PredictiveMetrics from '../analytics/PredictiveMetrics.tsx';
 import {
   ChainPaper,
   Quote,
@@ -48,7 +57,6 @@ import {
   useArtica,
 } from '../../context/ArticaContext';
 import { formatDecimal } from '../../utils/stellarNumber';
-import { useNavigate } from '../../lib/router';
 
 interface TokenTradingProps {
   paperId: number;
@@ -67,7 +75,6 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
     executeSell,
     loadTrades,
   } = useArtica();
-  const navigate = useNavigate();
 
   const [paper, setPaper] = useState<ChainPaper | null>(null);
   const [summary, setSummary] = useState<TokenSummary | null>(null);
@@ -87,11 +94,14 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
   const [slippage, setSlippage] = useState(1);
   
   // Detail tabs (OrderBook, TradeHistory, etc.)
-  const [tradeDetailTab, setTradeDetailTab] = useState<'orderbook' | 'trades' | 'positions' | 'social'>('orderbook');
+  const [tradeDetailTab, setTradeDetailTab] = useState<'orderbook' | 'trades' | 'positions' | 'social' | 'analytics'>('orderbook');
   
   // Paper details
   const [showPaperDetails, setShowPaperDetails] = useState(false);
   const [metricsTab, setMetricsTab] = useState<'research' | 'metrics' | 'citation'>('research');
+  
+  // AI Analytics modal
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
 
   const [buyQuote, setBuyQuote] = useState<Quote | null>(null);
   const [sellQuote, setSellQuote] = useState<Quote | null>(null);
@@ -123,6 +133,13 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
     return paper?.token || null;
   }, [paper?.token, useManualToken, manualTokenContractId]);
 
+  // Analytics hook
+  const analytics = useTokenAnalytics({
+    tokenContractId: getActiveTokenContractId(),
+    summary,
+    trades,
+  });
+
   const refreshData = useCallback(async () => {
     setRefreshing(true);
     setLoading(true);
@@ -135,12 +152,12 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
 
       if (tokenContractId) {
         try {
-          const [summaryResult, tradeResult] = await Promise.all([
+        const [summaryResult, tradeResult] = await Promise.all([
             getTokenSummary(tokenContractId),
-            loadTrades(paperId),
-          ]);
-          setSummary(summaryResult);
-          setTrades(tradeResult);
+          loadTrades(paperId),
+        ]);
+        setSummary(summaryResult);
+        setTrades(tradeResult);
         } catch (tokenErr) {
           console.error('Failed to load token data:', tokenErr);
           setError(`Failed to load token: ${tokenErr instanceof Error ? tokenErr.message : String(tokenErr)}`);
@@ -181,7 +198,7 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
           if (tradeType === 'buy') {
             setBuyQuote(quote);
           } else {
-            setSellQuote(quote);
+      setSellQuote(quote);
           }
           
           const avgPrice = (parseFloat(quote.priceBefore) + parseFloat(quote.priceAfter)) / 2;
@@ -196,7 +213,7 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
             priceImpact,
           });
         }
-      } catch (err) {
+    } catch (err) {
         console.error('Failed to get quote:', err);
       }
     };
@@ -388,13 +405,22 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
             <div className="flex-1">
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl md:text-3xl font-bold text-slate-800">
-                  {paperTitle || paper?.title || `Paper #${paperId}`}
+                  {paperTitle || `Paper #${paperId}`}
                 </h1>
                 {summary && (
                   <Badge className="backdrop-blur-sm bg-white/60 text-blue-600 ring-1 ring-inset ring-blue-500/20 shadow-sm">
                     {summary.symbol}
                   </Badge>
                 )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 hover:from-purple-600 hover:to-pink-600 shadow-lg"
+                  onClick={() => setShowAnalyticsModal(true)}
+                >
+                  <Sparkles className="w-4 h-4 mr-1.5" />
+                  AI Analytics
+                </Button>
               </div>
               <div className="flex items-center mt-2 -ml-2">
                 <Button 
@@ -437,16 +463,16 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
                 >
                   {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
                 </Button>
-              </div>
+        </div>
               <span className="text-sm text-slate-500 mt-1">
                 ≈ ${(parseFloat(summary?.basePrice || '0.01') * 0.1).toFixed(2)} USD
               </span>
-              {walletAddress ? (
+          {walletAddress ? (
                 <Badge variant="outline" className="mt-2 bg-emerald-100/80 text-emerald-800 border-emerald-200/50">
-                  <Wallet className="mr-2 h-3 w-3" />
-                  {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-                </Badge>
-              ) : (
+              <Wallet className="mr-2 h-3 w-3" />
+              {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+            </Badge>
+          ) : (
                 <Button 
                   variant="outline" 
                   className="mt-2 w-full bg-white/50 border-slate-300 hover:bg-white/80"
@@ -454,8 +480,8 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
                 >
                   <Wallet className="w-4 h-4 mr-2" />
                   Connect Wallet
-                </Button>
-              )}
+            </Button>
+          )}
             </div>
           </div>
         </motion.div>
@@ -527,8 +553,8 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
                             >
                               <ExternalLink className="w-4 h-4 mr-2" />
                               View Paper on IPFS
-                            </Button>
-                          </div>
+          </Button>
+        </div>
                         )}
                       </div>
                     )}
@@ -544,23 +570,23 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
                     )}
                   </motion.div>
                 </AnimatePresence>
-              </div>
+      </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {error && (
+      {error && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-        {info && (
+      {info && (
           <Alert className="mb-6">
-            <AlertDescription>{info}</AlertDescription>
-          </Alert>
-        )}
+          <AlertDescription>{info}</AlertDescription>
+        </Alert>
+      )}
 
         {!tokenContractId && (
           <Alert className="mb-6">
@@ -586,9 +612,9 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
                   Use Token
                 </Button>
               </div>
-            </AlertDescription>
-          </Alert>
-        )}
+          </AlertDescription>
+        </Alert>
+      )}
 
         {summary && tokenContractId && (
           <>
@@ -612,6 +638,7 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
                         {id: 'orderbook', label: 'Order Book', icon: <BarChart3/>},
                         {id: 'trades', label: 'Trade History', icon: <Activity/>},
                         {id: 'positions', label: 'Your Positions', icon: <Users/>},
+                        {id: 'analytics', label: 'Analytics', icon: <TrendingUp/>},
                         {id: 'social', label: 'Social Feed', icon: <Share2/>},
                       ].map((item) => (
                         <li 
@@ -634,7 +661,7 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
                       ))}
                     </ul>
                   </nav>
-                  <div>
+              <div>
                     {tradeDetailTab === 'orderbook' && (
                       <OrderBook 
                         data={orderBookData} 
@@ -657,6 +684,12 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
                         data={[]} 
                       />
                     )}
+                    {tradeDetailTab === 'analytics' && (
+                      <Analytics 
+                        analytics={analytics}
+                        tokenSymbol={summary.symbol || 'TOKEN'}
+                      />
+                    )}
                     {tradeDetailTab === 'social' && (
                       <SocialFeed 
                         paperId={paperId} 
@@ -665,25 +698,25 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
                       />
                     )}
                   </div>
-                </div>
+              </div>
               </div>
               
               {/* RIGHT COLUMN */}
               <div className="col-span-12 lg:col-span-4 space-y-6">
                 {/* TRADE PANEL */}
                 <div className="bg-white/60 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl p-6 space-y-6">
-                  <div>
+              <div>
                     <div className="flex items-center justify-between">
                       <h2 className="text-xl font-bold text-slate-800">Trade {summary.symbol || 'TOKEN'}</h2>
                       <div className="relative flex items-center">
                         <Badge className={`relative z-10 ${summary.trading ? 'bg-emerald-500' : 'bg-gray-500'} text-white border-0 shadow-lg`}>
                           {summary.trading ? 'Trading' : 'Paused'}
-                        </Badge>
+                </Badge>
                         {summary.trading && (
                           <div className="absolute inset-0 bg-emerald-400 blur-md animate-pulse" />
                         )}
                       </div>
-                    </div>
+              </div>
                     <p className="text-sm text-slate-500 mt-1">
                       Market Price: {formatDecimal(summary.basePrice, 8)} XLM
                     </p>
@@ -866,14 +899,14 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
                               <span className="text-sm font-mono font-medium text-slate-800">{slippage.toFixed(1)}%</span>
                             </div>
                             <div className="flex items-center gap-3">
-                              <Button 
-                                variant="outline" 
+                <Button
+                  variant="outline"
                                 size="icon" 
                                 className="h-9 w-9 rounded-full bg-white/50 border-slate-300" 
                                 onClick={() => setSlippage(Math.max(0.1, slippage - 0.1))}
-                              >
+                >
                                 <Minus className="h-4 w-4" />
-                              </Button>
+                </Button>
                               <Slider 
                                 value={[slippage]} 
                                 min={0.1} 
@@ -882,7 +915,7 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
                                 onValueChange={(v) => setSlippage(v[0])} 
                                 className="flex-1" 
                               />
-                              <Button 
+                <Button
                                 variant="outline" 
                                 size="icon" 
                                 className="h-9 w-9 rounded-full bg-white/50 border-slate-300" 
@@ -971,15 +1004,15 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
                         )}
                       </>
                     )}
-                  </Button>
+                </Button>
                 </div>
                 
                 {/* MARKET STATS */}
                 <div className="rounded-3xl border border-white/20 bg-white/60 p-6 shadow-2xl backdrop-blur-xl">
                   <h3 className="text-lg font-bold text-slate-800 mb-4">Market Stats</h3>
                   <MarketStats tokenInfo={summary} paperSymbol={summary.symbol || 'TOKEN'} />
-                </div>
-                
+          </div>
+
                 {/* WALLET INFO */}
                 <div className="rounded-3xl border border-white/20 bg-white/60 p-6 shadow-2xl backdrop-blur-xl">
                   <div className="flex items-center justify-between mb-3">
@@ -1007,9 +1040,184 @@ const TokenTrading: React.FC<TokenTradingProps> = ({ paperId, paperTitle }) => {
                 </div>
               </div>
             </div>
-          </>
+        </>
+      )}
+
+      {/* AI Analytics Modal */}
+      <Dialog open={showAnalyticsModal} onOpenChange={setShowAnalyticsModal}>
+        <DialogContent className="w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] overflow-y-auto p-0">
+          <DialogHeader className="p-6 pb-4 border-b">
+            <DialogTitle className="flex items-center gap-2 text-2xl">
+              <Sparkles className="w-6 h-6 text-purple-500" />
+              AI Analytics Dashboard
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-8 overflow-y-auto" style={{ maxHeight: 'calc(95vh - 80px)' }}>
+            <AnalyticsDashboardWrapper paperId={paperId} />
+          </div>
+        </DialogContent>
+      </Dialog>
+      </div>
+    </div>
+  );
+};
+
+// Analytics Dashboard Modal Component
+const AnalyticsDashboardWrapper: React.FC<{ paperId: number }> = ({ paperId }) => {
+  const [paperData, setPaperData] = useState<any>(null);
+  const [tokenData, setTokenData] = useState<any>(null);
+  const [academicMetrics, setAcademicMetrics] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('impact');
+  const { getPaper, getTokenSummary } = useArtica();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch paper from chain
+        const chainPaper = await getPaper(paperId);
+        if (chainPaper) {
+          setPaperData({
+            id: chainPaper.id,
+            title: `Paper #${paperId}`, // ChainPaper doesn't have title, use paperId
+            doi: chainPaper.doi,
+            metadataUri: chainPaper.metadataUri,
+          });
+
+          // Fetch token data if available
+          if (chainPaper.token) {
+            try {
+              const summary = await getTokenSummary(chainPaper.token);
+              if (summary) {
+                setTokenData({
+                  tokenAddress: chainPaper.token,
+                  symbol: summary.symbol,
+                  currentPrice: summary.basePrice,
+                });
+              }
+            } catch (err) {
+              console.error('Failed to fetch token summary:', err);
+            }
+          }
+        }
+
+        // Use mock academic metrics (since backend API may not be available)
+        setAcademicMetrics({
+          citations: 45,
+          downloads: 1234,
+          views: 5678,
+          altmetric: 12.5,
+          hIndex: 8,
+          impactFactor: 4.2,
+          // Add predictive metrics
+          predictedCitations: {
+            sixMonths: 65,
+            oneYear: 120,
+            twoYears: 280,
+          },
+          predictedAltmetric: {
+            sixMonths: 18,
+            oneYear: 32,
+            twoYears: 58,
+          },
+          predictedTokenPrice: {
+            sixMonths: 0.015,
+            oneYear: 0.028,
+            twoYears: 0.052,
+          },
+        });
+
+        setLoading(false);
+      } catch (err) {
+        console.error('Failed to fetch analytics data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load analytics');
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [paperId, getPaper, getTokenSummary]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  if (error || !paperData) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>{error || "Failed to load paper details"}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  return (
+    <div className="w-full">
+      <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">{paperData.title}</h2>
+          <p className="text-lg text-gray-500 mt-1">
+            {paperData.doi ? `DOI: ${paperData.doi}` : `Paper ID: ${paperData.id}`}
+          </p>
+        </div>
+        {tokenData && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg">
+            <TrendingUp className="w-4 h-4 text-blue-600" />
+            <span className="font-medium text-blue-700">
+              {tokenData.symbol}: {tokenData.currentPrice ? parseFloat(tokenData.currentPrice).toFixed(6) : 'N/A'} XLM
+            </span>
+          </div>
         )}
       </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-5 h-12">
+          <TabsTrigger value="impact" className="text-base font-medium">Impact</TabsTrigger>
+          <TabsTrigger value="citations" className="text-base font-medium">Citations</TabsTrigger>
+          <TabsTrigger value="geography" className="text-base font-medium">Geography</TabsTrigger>
+          <TabsTrigger value="metrics" className="text-base font-medium">Metrics</TabsTrigger>
+          <TabsTrigger value="predictive" className="text-base font-medium">Predictive</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="impact" className="mt-8 min-h-[600px]">
+          <ImpactTimeSeries 
+            paperData={paperData} 
+            tokenData={tokenData}
+            metrics={academicMetrics}
+          />
+        </TabsContent>
+
+        <TabsContent value="citations" className="mt-8 min-h-[600px]">
+          <CitationNetwork 
+            doi={paperData.doi || undefined}
+          />
+        </TabsContent>
+
+        <TabsContent value="geography" className="mt-8 min-h-[600px]">
+          <GeographicDistribution 
+            paperId={paperData.id?.toString() || paperId.toString()}
+            tokenAddress={tokenData?.tokenAddress}
+          />
+        </TabsContent>
+
+        <TabsContent value="metrics" className="mt-8 min-h-[600px]">
+          <AcademicMetricsPanel metrics={academicMetrics} />
+        </TabsContent>
+
+        <TabsContent value="predictive" className="mt-8 min-h-[600px]">
+          <PredictiveMetrics 
+            paperData={paperData}
+            metrics={academicMetrics}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

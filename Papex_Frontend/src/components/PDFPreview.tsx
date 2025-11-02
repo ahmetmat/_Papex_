@@ -47,10 +47,10 @@ const PDFPreview = ({ url }: { url: string }) => {
     <img 
       src={preview}
       alt="PDF Preview"
-      className="w-full h-48 object-cover rounded shadow"
+      className="w-full h-full object-cover"
     />
   ) : (
-    <div className="w-full h-48 bg-gray-100 flex items-center justify-center rounded shadow">
+    <div className="w-full h-full bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
       <FileText className="w-12 h-12 text-gray-400" />
     </div>
   );

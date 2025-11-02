@@ -13,8 +13,7 @@ import {
   Hash, 
   CheckCircle, 
   Upload,
-  X,
-  ArrowRight
+  X
 } from 'lucide-react';
 import {
   extractPDFMetadata,
@@ -25,7 +24,7 @@ import {
 } from '../../pdfService';
 
 const PaperUpload: React.FC = () => {
-  const { walletAddress, connectWallet, registerPaper } = useArtica();
+  const { walletAddress, connectWallet, ensureWallet, registerPaper } = useArtica();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -39,6 +38,7 @@ const PaperUpload: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [registeredId, setRegisteredId] = useState<number | null>(null);
+  const [autoRegistered, setAutoRegistered] = useState(false);
 
   const handleConnect = async () => {
     try {
@@ -62,6 +62,9 @@ const PaperUpload: React.FC = () => {
     setPdfFile(file);
     setError(null);
     setExtractedMetadata(null);
+    setSuccess(null);
+    setMetadataUri('');
+    setAutoRegistered(false);
 
     try {
       // Extract metadata from PDF
@@ -83,8 +86,69 @@ const PaperUpload: React.FC = () => {
     setPdfFile(null);
     setExtractedMetadata(null);
     setMetadataUri('');
+    setAutoRegistered(false);
+    setSuccess(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const registerPaperAndProceed = async (
+    { auto = false, metadataOverride }: { auto?: boolean; metadataOverride?: string } = {},
+  ): Promise<number | null> => {
+    const targetMetadataUri = (metadataOverride ?? metadataUri).trim();
+    if (!targetMetadataUri) {
+      setError('Metadata URI is required');
+      return null;
+    }
+
+    setError(null);
+
+    try {
+      const caller = await ensureWallet();
+      if (!caller) {
+        throw new Error('Wallet connection is required to register your paper.');
+      }
+    } catch (walletErr) {
+      const walletMessage =
+        walletErr instanceof Error
+          ? walletErr.message
+          : 'Wallet connection is required to register your paper.';
+      setError(
+        auto
+          ? `Wallet connection is required before moving to token creation. ${walletMessage}`
+          : walletMessage,
+      );
+      setAutoRegistered(false);
+      return null;
+    }
+
+    setSubmitting(true);
+    try {
+      // Ensure component state reflects the metadata URI used for registration
+      if (metadataOverride) {
+        setMetadataUri(targetMetadataUri);
+      }
+
+      const paperId = await registerPaper(targetMetadataUri, doi.trim() || null);
+      setRegisteredId(paperId);
+      if (paperId !== null) {
+        setSuccess(`Paper registered on-chain with ID #${paperId}. Redirecting to token creation...`);
+        setAutoRegistered(true);
+        setTimeout(() => {
+          navigate(`/token-creation/${paperId}`);
+        }, auto ? 1200 : 2000);
+      } else {
+        setSuccess('Paper registration transaction submitted');
+      }
+      setNotes('');
+      return paperId;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to register paper');
+      setAutoRegistered(false);
+      return null;
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -93,23 +157,39 @@ const PaperUpload: React.FC = () => {
 
     setUploading(true);
     setError(null);
+    setSuccess(null);
+    setAutoRegistered(false);
 
     try {
       // Upload PDF to IPFS
       const pdfHash = await uploadToIPFS(pdfFile);
-      
+      let resolvedMetadataUri = '';
+
       // Create and upload metadata JSON
       if (extractedMetadata) {
         const metadataHash = await createMetadataJSON(extractedMetadata, pdfHash, {
           notes: notes.trim() || undefined,
         });
-        setMetadataUri(metadataHash);
+        resolvedMetadataUri = metadataHash;
       } else {
         // If no metadata extracted, use PDF hash directly
-        setMetadataUri(pdfHash);
+        resolvedMetadataUri = pdfHash;
       }
+      setMetadataUri(resolvedMetadataUri);
 
       setSuccess('PDF and metadata uploaded to IPFS successfully!');
+
+      if (!autoRegistered) {
+        const paperId = await registerPaperAndProceed({
+          auto: true,
+          metadataOverride: resolvedMetadataUri,
+        });
+        if (!paperId && !walletAddress) {
+          setSuccess(
+            'PDF uploaded to IPFS successfully! Connect your wallet and click "Register Paper" to continue.',
+          );
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to upload to IPFS');
     } finally {
@@ -121,31 +201,7 @@ const PaperUpload: React.FC = () => {
     event.preventDefault();
     setError(null);
     setSuccess(null);
-
-    if (!metadataUri.trim()) {
-      setError('Metadata URI is required');
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      const paperId = await registerPaper(metadataUri.trim(), doi.trim() || null);
-      setRegisteredId(paperId);
-      if (paperId !== null) {
-        setSuccess(`Paper registered on-chain with ID #${paperId}. Redirecting to token creation...`);
-        // Navigate to token creation page after a short delay
-        setTimeout(() => {
-          navigate(`/token-creation/${paperId}`);
-        }, 2000);
-      } else {
-        setSuccess('Paper registration transaction submitted');
-      }
-      setNotes('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to register paper');
-    } finally {
-      setSubmitting(false);
-    }
+    await registerPaperAndProceed();
   };
 
   return (
@@ -317,7 +373,7 @@ const PaperUpload: React.FC = () => {
                 )}
                 <Button 
                   type="submit" 
-                  disabled={submitting || !walletAddress || !metadataUri.trim()}
+                  disabled={submitting || !walletAddress || !metadataUri.trim() || autoRegistered}
                 >
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Register Paper'}
                 </Button>
