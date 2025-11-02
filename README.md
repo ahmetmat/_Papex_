@@ -174,7 +174,7 @@ Individual bonding curve token contract for each research paper. Each paper gets
 
 | Contract | Transaction Hash | Status | Explorer Link |
 |----------|-----------------|--------|---------------|
-| Registry | `[5910403280289792#5910403280289793]` | ✅ Deployed | [View](https://stellar.expert/explorer/testnet/tx/https://stellar.expert/explorer/testnet/tx/5910403280289792#5910403280289793) |
+| Registry | `[5910403280289792#5910403280289793]` | ✅ Deployed | [View](https://stellar.expert/explorer/testnet/tx/5910403280289792#5910403280289793) |
 | Marketplace | `[5910450524925952#5910450524925953]` | ✅ Deployed | [View](https://stellar.expert/explorer/testnet/tx/5910450524925952#5910450524925953) |
 | Token WASM | `[10b0e6f74ff81174300a836c4f52c6fc2dcee6185c44447bf93b0080dc1bf58e]` | ✅ Uploaded | [View](https://stellar.expert/explorer/testnet/tx/5910480589697024#5910480589697025) |
 
