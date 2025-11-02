@@ -161,7 +161,7 @@ const FilterSidebar = ({
       )}
 
       <div
-        className={`fixed lg:sticky top-0 left-0 h-screen w-64 lg:w-56 bg-white border-r border-gray-100 transition-transform duration-300 z-50 lg:z-auto overflow-y-auto ${
+        className={`fixed lg:sticky top-0 left-0 h-screen w-72 lg:w-80 bg-white border-r border-gray-100 transition-transform duration-300 z-50 lg:z-auto overflow-y-auto ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
@@ -764,7 +764,7 @@ const PaperList: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 -mx-4 sm:-mx-6 lg:-mx-8">
+    <div className="min-h-screen bg-gray-50">
       {/* Enhanced Hero Section with Typewriter Effect */}
       <div className="bg-gradient-to-br from-[#083466] via-[#0a4080] to-[#0c4d99] text-white relative overflow-hidden">
         {/* Animated background elements */}
@@ -774,7 +774,7 @@ const PaperList: React.FC = () => {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-60 h-60 bg-gradient-to-br from-cyan-400/10 to-blue-600/10 rounded-full blur-3xl animate-pulse" />
         </div>
 
-        <div className="w-full px-6 py-20 relative z-10">
+        <div className="w-full px-8 lg:px-12 py-20 relative z-10">
           <div className="w-full text-center">
             <motion.h1
               initial={{ opacity: 0, y: 30 }}
@@ -793,7 +793,7 @@ const PaperList: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto"
+              className="text-xl text-blue-100 mb-10 max-w-4xl mx-auto"
             >
               Explore tokenized research papers, invest in breakthrough discoveries, and trade
               academic insights on the world's first research marketplace.
@@ -804,7 +804,7 @@ const PaperList: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
-              className="relative max-w-2xl mx-auto"
+              className="relative max-w-3xl mx-auto"
             >
               <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
               <Input
@@ -821,7 +821,7 @@ const PaperList: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.6 }}
-              className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16 max-w-4xl mx-auto"
+              className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16 max-w-6xl mx-auto"
             >
               <div className="text-center bg-white/10 backdrop-blur-sm rounded-3xl p-6 border border-white/20">
                 <div className="text-4xl font-bold text-white mb-2">
@@ -868,7 +868,7 @@ const PaperList: React.FC = () => {
         <div className="flex-1">
           {/* Top Bar */}
           <div className="bg-white border-b border-gray-100 sticky top-0 z-30 shadow-sm">
-            <div className="w-full px-6 py-4">
+            <div className="w-full px-8 lg:px-12 py-4">
               <div className="flex items-center justify-between">
                 {/* View Switcher */}
                 <div className="flex items-center gap-4">
@@ -934,7 +934,7 @@ const PaperList: React.FC = () => {
           </div>
 
           {/* Content */}
-          <div className="w-full px-6 py-8">
+          <div className="w-full px-8 lg:px-12 py-8">
             {/* Results Count */}
             <div className="flex items-center justify-between mb-6">
               <p className="text-gray-600">
@@ -971,7 +971,7 @@ const PaperList: React.FC = () => {
                 exit={{ opacity: 0 }}
                 className={
                   viewMode === 'grid'
-                    ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-6'
+                    ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 4xl:grid-cols-7 gap-6'
                     : 'space-y-4'
                 }
               >

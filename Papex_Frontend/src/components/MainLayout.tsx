@@ -34,7 +34,7 @@ const MainLayout: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
+        <div className="mx-auto flex h-16 w-full max-w-[1920px] items-center justify-between px-6 lg:px-8">
           <button
             type="button"
             onClick={() => navigate('/')}
@@ -88,7 +88,7 @@ const MainLayout: React.FC = () => {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-8">
+      <main className="mx-auto w-full max-w-[1920px] px-6 lg:px-8 py-8">
         <Outlet />
       </main>
     </div>
